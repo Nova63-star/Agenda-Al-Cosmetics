@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agenda Virtual</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Agenda AL Cosmetics</h1>
+    <div class="calendar-header">
+      <button id="prev-month">← Anterior</button>
+      <h2 id="month-year"></h2>
+      <button id="next-month">Siguiente →</button>
+    </div>
+    <div id="calendar"></div>
+
+    <div id="day-view" class="hidden">
+      <h2 id="selected-date"></h2>
+      <button id="add-appointment">+ Agendar Cita</button>
+      <div id="appointments"></div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3>Agendar nueva cita</h3>
+      <input type="text" id="name" placeholder="Nombre" />
+      <input type="text" id="service" placeholder="Servicio" />
+      <input type="time" id="time" />
+      <button id="save">Guardar Cita</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
