@@ -1,135 +1,135 @@
-const calendar = document.getElementById("calendar");
-const monthYearEl = document.getElementById("month-year");
-const dayView = document.getElementById("day-view");
-const selectedDateEl = document.getElementById("selected-date");
-const appointmentsContainer = document.getElementById("appointments");
-const modal = document.getElementById("modal");
-const addAppointmentBtn = document.getElementById("add-appointment");
-const saveBtn = document.getElementById("save");
-const closeModal = document.querySelector(".close");
-const prevMonthBtn = document.getElementById("prev-month");
-const nextMonthBtn = document.getElementById("next-month");
+const calendar = document.getElementById('calendar');
+const monthYear = document.getElementById('month-year');
+const prevMonthBtn = document.getElementById('prev-month');
+const nextMonthBtn = document.getElementById('next-month');
+const dayView = document.getElementById('day-view');
+const selectedDateEl = document.getElementById('selected-date');
+const appointmentsEl = document.getElementById('appointments');
+const addAppointmentBtn = document.getElementById('add-appointment');
+const modal = document.getElementById('modal');
+const closeModal = document.querySelector('.close');
+const saveBtn = document.getElementById('save');
+const nameInput = document.getElementById('name');
+const serviceInput = document.getElementById('service');
+const timeInput = document.getElementById('time');
 
 let currentDate = new Date();
 let selectedDate = null;
-
-function getDateKey(year, month, day) {
-  return `${year}-${month + 1}-${day}`;
-}
-
-function loadAppointments() {
-  return JSON.parse(localStorage.getItem("appointments") || "{}");
-}
-
-function saveAppointments(data) {
-  localStorage.setItem("appointments", JSON.stringify(data));
-}
+let appointments = {};
 
 function renderCalendar() {
+  calendar.innerHTML = '';
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
 
-  calendar.innerHTML = "";
-  monthYearEl.textContent = `${currentDate.toLocaleString("default", { month: "long" })} ${year}`;
+  const firstDay = new Date(year, month, 1).getDay();
+  const lastDate = new Date(year, month + 1, 0).getDate();
 
-  const appointments = loadAppointments();
+  monthYear.textContent = `${currentDate.toLocaleString('default', {
+    month: 'long',
+  })} ${year}`;
 
-  for (let i = 1; i <= daysInMonth; i++) {
-    const date = new Date(year, month, i);
-    const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  for (let i = 0; i < firstDay; i++) {
+    const emptyCell = document.createElement('div');
+    calendar.appendChild(emptyCell);
+  }
 
-    if (year === today.getFullYear() && month === today.getMonth() && isPast) {
-      continue; // 👈 Saltar días pasados solo en el mes actual
-    }
+  for (let day = 1; day <= lastDate; day++) {
+    // Ocultar días pasados solo en el mes actual
+    if (isCurrentMonth && day < today.getDate()) continue;
 
-    const dayEl = document.createElement("div");
-    dayEl.className = "day";
-    dayEl.textContent = i;
+    const dateStr = `${year}-${month + 1}-${day}`;
+    const dayEl = document.createElement('div');
+    dayEl.className = 'day fade-in';
+    dayEl.textContent = day;
 
-    const key = getDateKey(year, month, i);
-    if (appointments[key] && appointments[key].length > 0) {
-      const indicator = document.createElement("div");
-      indicator.className = "indicator";
-      indicator.textContent = appointments[key].length;
+    if (appointments[dateStr]) {
+      const indicator = document.createElement('div');
+      indicator.className = 'indicator';
+      indicator.textContent = appointments[dateStr].length;
       dayEl.appendChild(indicator);
     }
 
-    dayEl.addEventListener("click", () => openDay(year, month, i));
+    dayEl.addEventListener('click', () => {
+      selectedDate = dateStr;
+      showDayView();
+    });
+
     calendar.appendChild(dayEl);
   }
 }
 
+function showDayView() {
+  dayView.classList.remove('hidden');
 
-function openDay(year, month, day) {
-  selectedDate = getDateKey(year, month, day);
-  selectedDateEl.textContent = `Citas del ${day}/${month + 1}/${year}`;
-  showAppointments();
-  dayView.classList.remove("hidden");
-}
+  const [year, month, day] = selectedDate.split('-');
+  const date = new Date(year, month - 1, day);
+  const formatted = `${day} de ${date.toLocaleString('default', {
+    month: 'long',
+  })} de ${year}`;
 
-function showAppointments() {
-  const appointments = loadAppointments();
-  const dayAppointments = appointments[selectedDate] || [];
+  selectedDateEl.textContent = `Citas para ${formatted}`;
+  appointmentsEl.innerHTML = '';
 
-  appointmentsContainer.innerHTML = "";
+  (appointments[selectedDate] || []).forEach((appt, index) => {
+    const apptEl = document.createElement('div');
+    apptEl.className = 'appointment';
+    apptEl.textContent = `${appt.time} - ${appt.name} (${appt.service})`;
 
-  dayAppointments.forEach((appt, index) => {
-    const el = document.createElement("div");
-    el.className = "appointment";
-    el.textContent = `${appt.time} - ${appt.name} (${appt.service})`;
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'delete-btn';
+    deleteBtn.textContent = '✕';
+    deleteBtn.onclick = () => {
+      appointments[selectedDate].splice(index, 1);
+      if (appointments[selectedDate].length === 0) {
+        delete appointments[selectedDate];
+      }
+      showDayView();
+      renderCalendar();
+    };
 
-    // 👉 Botón eliminar
-    const deleteBtn = document.createElement("button");
-    deleteBtn.textContent = "Eliminar";
-    deleteBtn.className = "delete-btn";
-    deleteBtn.addEventListener("click", () => {
-      dayAppointments.splice(index, 1); // elimina la cita
-      appointments[selectedDate] = dayAppointments;
-      saveAppointments(appointments);
-      showAppointments(); // recarga las citas del día
-      renderCalendar();   // actualiza los indicadores del calendario
-    });
-
-    el.appendChild(deleteBtn);
-    appointmentsContainer.appendChild(el);
+    apptEl.appendChild(deleteBtn);
+    appointmentsEl.appendChild(apptEl);
   });
 }
 
-
-addAppointmentBtn.addEventListener("click", () => {
-  modal.classList.remove("hidden");
+addAppointmentBtn.addEventListener('click', () => {
+  modal.classList.remove('hidden');
+  modal.classList.add('fade-in');
+  nameInput.value = '';
+  serviceInput.value = '';
+  timeInput.value = '';
 });
 
-closeModal.addEventListener("click", () => {
-  modal.classList.add("hidden");
+closeModal.addEventListener('click', () => {
+  modal.classList.add('hidden');
 });
 
-saveBtn.addEventListener("click", () => {
-  const name = document.getElementById("name").value;
-  const service = document.getElementById("service").value;
-  const time = document.getElementById("time").value;
+saveBtn.addEventListener('click', () => {
+  const name = nameInput.value.trim();
+  const service = serviceInput.value.trim();
+  const time = timeInput.value;
 
-  if (!name || !service || !time || !selectedDate) return;
+  if (name && service && time) {
+    if (!appointments[selectedDate]) {
+      appointments[selectedDate] = [];
+    }
 
-  const appointments = loadAppointments();
-  if (!appointments[selectedDate]) appointments[selectedDate] = [];
-
-  appointments[selectedDate].push({ name, service, time });
-  saveAppointments(appointments);
-
-  modal.classList.add("hidden");
-  showAppointments();
-  renderCalendar(); // refresca el contador de citas
+    appointments[selectedDate].push({ name, service, time });
+    modal.classList.add('hidden');
+    showDayView();
+    renderCalendar();
+  }
 });
 
-prevMonthBtn.addEventListener("click", () => {
+prevMonthBtn.addEventListener('click', () => {
   currentDate.setMonth(currentDate.getMonth() - 1);
   renderCalendar();
 });
 
-nextMonthBtn.addEventListener("click", () => {
+nextMonthBtn.addEventListener('click', () => {
   currentDate.setMonth(currentDate.getMonth() + 1);
   renderCalendar();
 });
