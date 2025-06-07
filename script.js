@@ -1,153 +1,157 @@
-const calendar = document.getElementById('calendar');
-const monthYear = document.getElementById('month-year');
-const prevMonthBtn = document.getElementById('prev-month');
-const nextMonthBtn = document.getElementById('next-month');
-const dayView = document.getElementById('day-view');
-const selectedDateEl = document.getElementById('selected-date');
-const appointmentsEl = document.getElementById('appointments');
-const addAppointmentBtn = document.getElementById('add-appointment');
-const modal = document.getElementById('modal');
-const closeModal = document.querySelector('.close');
-const saveBtn = document.getElementById('save');
-const nameInput = document.getElementById('name');
-const serviceInput = document.getElementById('service');
-const timeInput = document.getElementById('time');
+const calendar = document.getElementById("calendar");
+const monthYearEl = document.getElementById("month-year");
+const dayView = document.getElementById("day-view");
+const selectedDateEl = document.getElementById("selected-date");
+const appointmentsContainer = document.getElementById("appointments");
+const modal = document.getElementById("modal");
+const addAppointmentBtn = document.getElementById("add-appointment");
+const saveBtn = document.getElementById("save");
+const closeModal = document.querySelector(".close");
+const prevMonthBtn = document.getElementById("prev-month");
+const nextMonthBtn = document.getElementById("next-month");
 
 let currentDate = new Date();
 let selectedDate = null;
-let appointments = {};
 
-// Cargar citas desde localStorage al inicio
-function loadAppointments() {
-  const data = localStorage.getItem('appointments');
-  if (data) {
-    appointments = JSON.parse(data);
-  }
+function getDateKey(year, month, day) {
+  return `${year}-${month + 1}-${day}`;
 }
 
-// Guardar citas en localStorage
-function saveAppointments() {
-  localStorage.setItem('appointments', JSON.stringify(appointments));
+function loadAppointments() {
+  return JSON.parse(localStorage.getItem("appointments") || "{}");
+}
+
+function saveAppointments(data) {
+  localStorage.setItem("appointments", JSON.stringify(data));
+}
+
+function clearPastAppointments() {
+  const today = new Date();
+  const appointments = loadAppointments();
+  let changed = false;
+
+  for (const key in appointments) {
+    const [year, month, day] = key.split("-").map(Number);
+    const apptDate = new Date(year, month - 1, day);
+    if (apptDate < today.setHours(0, 0, 0, 0)) {
+      delete appointments[key];
+      changed = true;
+    }
+  }
+
+  if (changed) saveAppointments(appointments);
 }
 
 function renderCalendar() {
-  calendar.innerHTML = '';
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const today = new Date();
   const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const lastDate = new Date(year, month + 1, 0).getDate();
-
-  monthYear.textContent = `${currentDate.toLocaleString('default', {
-    month: 'long',
+  calendar.innerHTML = "";
+  monthYearEl.textContent = `${currentDate.toLocaleString("default", {
+    month: "long",
   })} ${year}`;
 
-  for (let i = 0; i < firstDay; i++) {
-    const emptyCell = document.createElement('div');
-    calendar.appendChild(emptyCell);
-  }
+  const appointments = loadAppointments();
 
-  for (let day = 1; day <= lastDate; day++) {
-    if (isCurrentMonth && day < today.getDate()) continue;
+  for (let i = 1; i <= daysInMonth; i++) {
+    if (isCurrentMonth && i < today.getDate()) continue;
 
-    const dateStr = `${year}-${month + 1}-${day}`;
-    const dayEl = document.createElement('div');
-    dayEl.className = 'day fade-in';
-    dayEl.textContent = day;
+    const dayEl = document.createElement("div");
+    dayEl.className = "day fade-in";
+    dayEl.textContent = i;
 
-    if (appointments[dateStr]) {
-      const indicator = document.createElement('div');
-      indicator.className = 'indicator';
-      indicator.textContent = appointments[dateStr].length;
+    const key = getDateKey(year, month, i);
+    if (appointments[key] && appointments[key].length > 0) {
+      const indicator = document.createElement("div");
+      indicator.className = "indicator";
+      indicator.textContent = appointments[key].length;
       dayEl.appendChild(indicator);
     }
 
-    dayEl.addEventListener('click', () => {
-      selectedDate = dateStr;
-      showDayView();
-    });
-
+    dayEl.addEventListener("click", () => openDay(year, month, i));
     calendar.appendChild(dayEl);
   }
 }
 
-function showDayView() {
-  dayView.classList.remove('hidden');
-
-  const [year, month, day] = selectedDate.split('-');
-  const date = new Date(year, month - 1, day);
-  const formatted = `${day} de ${date.toLocaleString('default', {
-    month: 'long',
-  })} de ${year}`;
-
+function openDay(year, month, day) {
+  selectedDate = getDateKey(year, month, day);
+  const formatted = new Date(year, month, day).toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
   selectedDateEl.textContent = `Citas para ${formatted}`;
-  appointmentsEl.innerHTML = '';
+  showAppointments();
+  dayView.classList.remove("hidden");
+}
 
-  (appointments[selectedDate] || []).forEach((appt, index) => {
-    const apptEl = document.createElement('div');
-    apptEl.className = 'appointment';
-    apptEl.textContent = `${appt.time} - ${appt.name} (${appt.service})`;
+function showAppointments() {
+  const appointments = loadAppointments();
+  const dayAppointments = appointments[selectedDate] || [];
 
-    const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'delete-btn';
-    deleteBtn.textContent = '✕';
-    deleteBtn.onclick = () => {
-      appointments[selectedDate].splice(index, 1);
-      if (appointments[selectedDate].length === 0) {
-        delete appointments[selectedDate];
-      }
-      saveAppointments(); // ← Guardamos después de eliminar
-      showDayView();
-      renderCalendar();
-    };
-
-    apptEl.appendChild(deleteBtn);
-    appointmentsEl.appendChild(apptEl);
+  appointmentsContainer.innerHTML = "";
+  dayAppointments.forEach((appt, index) => {
+    const el = document.createElement("div");
+    el.className = "appointment fade-in";
+    el.innerHTML = `${appt.time} - ${appt.name} (${appt.service}) 
+      <button class="delete-btn" onclick="deleteAppointment('${selectedDate}', ${index})">✕</button>`;
+    appointmentsContainer.appendChild(el);
   });
 }
 
-addAppointmentBtn.addEventListener('click', () => {
-  modal.classList.remove('hidden');
-  modal.classList.add('fade-in');
-  nameInput.value = '';
-  serviceInput.value = '';
-  timeInput.value = '';
+function deleteAppointment(date, index) {
+  const appointments = loadAppointments();
+  appointments[date].splice(index, 1);
+  if (appointments[date].length === 0) delete appointments[date];
+  saveAppointments(appointments);
+  showAppointments();
+  renderCalendar();
+}
+
+addAppointmentBtn.addEventListener("click", () => {
+  modal.classList.remove("hidden");
 });
 
-closeModal.addEventListener('click', () => {
-  modal.classList.add('hidden');
+closeModal.addEventListener("click", () => {
+  modal.classList.add("hidden");
 });
 
-saveBtn.addEventListener('click', () => {
-  const name = nameInput.value.trim();
-  const service = serviceInput.value.trim();
-  const time = timeInput.value;
+saveBtn.addEventListener("click", () => {
+  const name = document.getElementById("name").value;
+  const service = document.getElementById("service").value;
+  const time = document.getElementById("time").value;
 
-  if (name && service && time) {
-    if (!appointments[selectedDate]) {
-      appointments[selectedDate] = [];
-    }
+  if (!name || !service || !time || !selectedDate) return;
 
-    appointments[selectedDate].push({ name, service, time });
-    saveAppointments(); // ← Guardamos después de agregar
-    modal.classList.add('hidden');
-    showDayView();
-    renderCalendar();
-  }
+  const appointments = loadAppointments();
+  if (!appointments[selectedDate]) appointments[selectedDate] = [];
+
+  appointments[selectedDate].push({ name, service, time });
+  saveAppointments(appointments);
+
+  modal.classList.add("hidden");
+  document.getElementById("name").value = "";
+  document.getElementById("service").value = "";
+  document.getElementById("time").value = "";
+
+  showAppointments();
+  renderCalendar();
 });
 
-prevMonthBtn.addEventListener('click', () => {
+prevMonthBtn.addEventListener("click", () => {
   currentDate.setMonth(currentDate.getMonth() - 1);
   renderCalendar();
 });
 
-nextMonthBtn.addEventListener('click', () => {
+nextMonthBtn.addEventListener("click", () => {
   currentDate.setMonth(currentDate.getMonth() + 1);
   renderCalendar();
 });
 
-// Inicialización
-loadAppointments();
+// Limpia citas pasadas y genera el calendario inicial
+clearPastAppointments();
 renderCalendar();
