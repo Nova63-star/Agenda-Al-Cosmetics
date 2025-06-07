@@ -142,9 +142,17 @@ saveBtn.addEventListener("click", () => {
   renderCalendar();
 });
 
+// Bloqueo de retroceso a meses pasados
 prevMonthBtn.addEventListener("click", () => {
-  currentDate.setMonth(currentDate.getMonth() - 1);
-  renderCalendar();
+  const today = new Date();
+  const isCurrentMonth =
+    currentDate.getFullYear() === today.getFullYear() &&
+    currentDate.getMonth() === today.getMonth();
+
+  if (!isCurrentMonth) {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  }
 });
 
 nextMonthBtn.addEventListener("click", () => {
