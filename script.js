@@ -17,6 +17,19 @@ let currentDate = new Date();
 let selectedDate = null;
 let appointments = {};
 
+// Cargar citas desde localStorage al inicio
+function loadAppointments() {
+  const data = localStorage.getItem('appointments');
+  if (data) {
+    appointments = JSON.parse(data);
+  }
+}
+
+// Guardar citas en localStorage
+function saveAppointments() {
+  localStorage.setItem('appointments', JSON.stringify(appointments));
+}
+
 function renderCalendar() {
   calendar.innerHTML = '';
   const year = currentDate.getFullYear();
@@ -37,7 +50,6 @@ function renderCalendar() {
   }
 
   for (let day = 1; day <= lastDate; day++) {
-    // Ocultar días pasados solo en el mes actual
     if (isCurrentMonth && day < today.getDate()) continue;
 
     const dateStr = `${year}-${month + 1}-${day}`;
@@ -86,6 +98,7 @@ function showDayView() {
       if (appointments[selectedDate].length === 0) {
         delete appointments[selectedDate];
       }
+      saveAppointments(); // ← Guardamos después de eliminar
       showDayView();
       renderCalendar();
     };
@@ -118,6 +131,7 @@ saveBtn.addEventListener('click', () => {
     }
 
     appointments[selectedDate].push({ name, service, time });
+    saveAppointments(); // ← Guardamos después de agregar
     modal.classList.add('hidden');
     showDayView();
     renderCalendar();
@@ -134,4 +148,6 @@ nextMonthBtn.addEventListener('click', () => {
   renderCalendar();
 });
 
+// Inicialización
+loadAppointments();
 renderCalendar();
